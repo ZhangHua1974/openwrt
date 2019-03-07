@@ -1,0 +1,18 @@
+--- a/include/mbedtls/bn_mul.h
++++ b/include/mbedtls/bn_mul.h
+@@ -722,6 +722,7 @@
+ #endif /* Alpha */
+ 
+ #if defined(__mips__) && !defined(__mips64)
++#if (__mips_isa_rev < 6)
+ 
+ #define MULADDC_INIT                    \
+     asm(                                \
+@@ -755,6 +756,7 @@
+         : "$9", "$10", "$11", "$12", "$13", "$14", "$15"    \
+     );
+ 
++#endif /* __mips_isa_rev < 6 */
+ #endif /* MIPS */
+ #endif /* GNUC */
+ 

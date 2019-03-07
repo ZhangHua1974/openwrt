@@ -16,4 +16,10 @@ qemu-system-mips64el -kernel bin/targets/malta/le64/openwrt-malta-le64-vmlinux-i
 For the 64 bit big-endian image:
 qemu-system-mips64 -kernel bin/targets/malta/be64/openwrt-malta-be64-vmlinux-initramfs.elf -nographic -m 256
 
+For the 64 bit r6 little-endian image:
+qemu-system-mips64el -cpu I6400-kernel bin/targets/malta/le64r6/openwrt-malta-le64r6-vmlinux-initramfs.elf -nographic -m 256
+
+For the 64 bit r6 big-endian image:
+qemu-system-mips64 -cpu I6400 -kernel bin/targets/malta/be64r6/openwrt-malta-be64r6-vmlinux-initramfs.elf -nographic -m 256
+
 and enjoy the system bootin.

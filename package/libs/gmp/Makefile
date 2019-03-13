@@ -50,6 +50,11 @@ ifeq ($(CONFIG_CPU_TYPE), "mips32r6")
 		--disable-assembly
 endif
 
+ifeq ($(CONFIG_CPU_TYPE), "mips64r6")
+        CONFIGURE_ARGS += \
+                --disable-assembly
+endif
+
 define Build/Compile
 	$(call Build/Compile/Default, \
 		DESTDIR="$(PKG_INSTALL_DIR)" \

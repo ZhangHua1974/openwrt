@@ -1,0 +1,982 @@
+--- /dev/null
++++ b/mpn/mips64/r6/add_n.asm
+@@ -0,0 +1,134 @@
++dnl  MIPS64 mpn_add_n -- Add two limb vectors of the same length > 0 and store
++dnl  sum in a third limb vector.
++
++dnl  Copyright 1995, 2000-2002, 2011 Free Software Foundation, Inc.
++
++dnl  This file is part of the GNU MP Library.
++dnl
++dnl  The GNU MP Library is free software; you can redistribute it and/or modify
++dnl  it under the terms of either:
++dnl
++dnl    * the GNU Lesser General Public License as published by the Free
++dnl      Software Foundation; either version 3 of the License, or (at your
++dnl      option) any later version.
++dnl
++dnl  or
++dnl
++dnl    * the GNU General Public License as published by the Free Software
++dnl      Foundation; either version 2 of the License, or (at your option) any
++dnl      later version.
++dnl
++dnl  or both in parallel, as here.
++dnl
++dnl  The GNU MP Library is distributed in the hope that it will be useful, but
++dnl  WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
++dnl  or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++dnl  for more details.
++dnl
++dnl  You should have received copies of the GNU General Public License and the
++dnl  GNU Lesser General Public License along with the GNU MP Library.  If not,
++dnl  see https://www.gnu.org/licenses/.
++
++include(`../config.m4')
++
++C INPUT PARAMETERS
++C res_ptr	$4
++C s1_ptr	$5
++C s2_ptr	$6
++C size		$7
++
++ASM_START()
++PROLOGUE(mpn_add_nc)
++	ld	$10,0($5)
++	ld	$11,0($6)
++
++	daddiu	$7,$7,-1
++	and	$9,$7,4-1	C number of limbs in first loop
++	beq	$9,$0,.L0	C if multiple of 4 limbs, skip first loop
++	 move	$2,$8
++	b	.Loop0
++	 dsubu	$7,$7,$9
++EPILOGUE()
++PROLOGUE(mpn_add_n)
++	ld	$10,0($5)
++	ld	$11,0($6)
++
++	daddiu	$7,$7,-1
++	and	$9,$7,4-1	C number of limbs in first loop
++	beq	$9,$0,.L0	C if multiple of 4 limbs, skip first loop
++	 move	$2,$0
++
++	dsubu	$7,$7,$9
++
++.Loop0:	daddiu	$9,$9,-1
++	ld	$12,8($5)
++	daddu	$11,$11,$2
++	ld	$13,8($6)
++	sltu	$8,$11,$2
++	daddu	$11,$10,$11
++	sltu	$2,$11,$10
++	sd	$11,0($4)
++	or	$2,$2,$8
++
++	daddiu	$5,$5,8
++	daddiu	$6,$6,8
++	move	$10,$12
++	move	$11,$13
++	bne	$9,$0,.Loop0
++	 daddiu	$4,$4,8
++
++.L0:	beq	$7,$0,.Lend
++	 nop
++
++.Loop:	daddiu	$7,$7,-4
++
++	ld	$12,8($5)
++	daddu	$11,$11,$10
++	ld	$13,8($6)
++	sltu	$8,$11,$10
++	daddu	$11,$11,$2
++	sltu	$2,$11,$2
++	sd	$11,0($4)
++	or	$2,$2,$8
++
++	ld	$10,16($5)
++	daddu	$13,$13,$12
++	ld	$11,16($6)
++	sltu	$8,$13,$12
++	daddu	$13,$13,$2
++	sltu	$2,$13,$2
++	sd	$13,8($4)
++	or	$2,$2,$8
++
++	ld	$12,24($5)
++	daddu	$11,$11,$10
++	ld	$13,24($6)
++	sltu	$8,$11,$10
++	daddu	$11,$11,$2
++	sltu	$2,$11,$2
++	sd	$11,16($4)
++	or	$2,$2,$8
++
++	ld	$10,32($5)
++	daddu	$13,$13,$12
++	ld	$11,32($6)
++	sltu	$8,$13,$12
++	daddu	$13,$13,$2
++	sltu	$2,$13,$2
++	sd	$13,24($4)
++	or	$2,$2,$8
++
++	daddiu	$5,$5,32
++	daddiu	$6,$6,32
++
++	bne	$7,$0,.Loop
++	 daddiu	$4,$4,32
++
++.Lend:	daddu	$11,$11,$2
++	sltu	$8,$11,$2
++	daddu	$11,$10,$11
++	sltu	$2,$11,$10
++	sd	$11,0($4)
++	j	$31
++	or	$2,$2,$8
++EPILOGUE()
+--- /dev/null
++++ b/mpn/mips64/r6/addmul_1.asm
+@@ -0,0 +1,103 @@
++dnl  MIPS64 mpn_addmul_1 -- Multiply a limb vector with a single limb and add
++dnl  the product to a second limb vector.
++
++dnl  Copyright 1992, 1994, 1995, 2000-2002 Free Software Foundation, Inc.
++
++dnl  This file is part of the GNU MP Library.
++dnl
++dnl  The GNU MP Library is free software; you can redistribute it and/or modify
++dnl  it under the terms of either:
++dnl
++dnl    * the GNU Lesser General Public License as published by the Free
++dnl      Software Foundation; either version 3 of the License, or (at your
++dnl      option) any later version.
++dnl
++dnl  or
++dnl
++dnl    * the GNU General Public License as published by the Free Software
++dnl      Foundation; either version 2 of the License, or (at your option) any
++dnl      later version.
++dnl
++dnl  or both in parallel, as here.
++dnl
++dnl  The GNU MP Library is distributed in the hope that it will be useful, but
++dnl  WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
++dnl  or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++dnl  for more details.
++dnl
++dnl  You should have received copies of the GNU General Public License and the
++dnl  GNU Lesser General Public License along with the GNU MP Library.  If not,
++dnl  see https://www.gnu.org/licenses/.
++
++include(`../config.m4')
++
++C INPUT PARAMETERS
++C res_ptr	$4
++C s1_ptr	$5
++C size		$6
++C s2_limb	$7
++
++ASM_START()
++PROLOGUE(mpn_addmul_1)
++
++C feed-in phase 0
++	ld	$8,0($5)
++
++C feed-in phase 1
++	daddiu	$5,$5,8
++	dmulu	$24,$8,$7
++	dmuhu	$25,$8,$7
++	daddiu	$6,$6,-1
++	beq	$6,$0,$LC0
++	 move	$2,$0		C zero cy2
++
++	daddiu	$6,$6,-1
++	beq	$6,$0,$LC1
++	ld	$8,0($5)	C load new s1 limb as early as possible
++
++Loop:	ld	$10,0($4)
++	daddu	$3,$24,$0
++	daddu	$9,$25,$0
++	daddiu	$5,$5,8
++	daddu	$3,$3,$2	C add old carry limb to low product limb
++	dmulu	$24,$8,$7
++	dmuhu	$25,$8,$7
++	ld	$8,0($5)	C load new s1 limb as early as possible
++	daddiu	$6,$6,-1	C decrement loop counter
++	sltu	$2,$3,$2	C carry from previous addition -> $2
++	daddu	$3,$10,$3
++	sltu	$10,$3,$10
++	daddu	$2,$2,$10
++	sd	$3,0($4)
++	daddiu	$4,$4,8
++	bne	$6,$0,Loop
++	 daddu	$2,$9,$2	C add high product limb and carry from addition
++
++C wind-down phase 1
++$LC1:	ld	$10,0($4)
++	daddu	$3,$24,$0
++	daddu	$9,$25,$0
++	daddu	$3,$3,$2
++	sltu	$2,$3,$2
++	dmulu	$24,$8,$7
++	dmuhu	$25,$8,$7
++	daddu	$3,$10,$3
++	sltu	$10,$3,$10
++	daddu	$2,$2,$10
++	sd	$3,0($4)
++	daddiu	$4,$4,8
++	daddu	$2,$9,$2	C add high product limb and carry from addition
++
++C wind-down phase 0
++$LC0:	ld	$10,0($4)
++	daddu	$3,$24,$0
++	daddu	$9,$25,$0
++	daddu	$3,$3,$2
++	sltu	$2,$3,$2
++	daddu	$3,$10,$3
++	sltu	$10,$3,$10
++	daddu	$2,$2,$10
++	sd	$3,0($4)
++	j	$31
++	daddu	$2,$9,$2	C add high product limb and carry from addition
++EPILOGUE(mpn_addmul_1)
+--- /dev/null
++++ b/mpn/mips64/r6/gmp-mparam.h
+@@ -0,0 +1,72 @@
++/* gmp-mparam.h -- Compiler/machine parameter header file.
++
++Copyright 1991, 1993, 1994, 1999-2004 Free Software Foundation, Inc.
++
++This file is part of the GNU MP Library.
++
++The GNU MP Library is free software; you can redistribute it and/or modify
++it under the terms of either:
++
++  * the GNU Lesser General Public License as published by the Free
++    Software Foundation; either version 3 of the License, or (at your
++    option) any later version.
++
++or
++
++  * the GNU General Public License as published by the Free Software
++    Foundation; either version 2 of the License, or (at your option) any
++    later version.
++
++or both in parallel, as here.
++
++The GNU MP Library is distributed in the hope that it will be useful, but
++WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
++or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++for more details.
++
++You should have received copies of the GNU General Public License and the
++GNU Lesser General Public License along with the GNU MP Library.  If not,
++see https://www.gnu.org/licenses/.  */
++
++
++#define GMP_LIMB_BITS 64
++#define GMP_LIMB_BYTES 8
++
++
++/* Generated by tuneup.c, 2004-02-10, gcc 3.2 & MIPSpro C 7.2.1 (R1x000) */
++
++#define MUL_TOOM22_THRESHOLD             16
++#define MUL_TOOM33_THRESHOLD             89
++
++#define SQR_BASECASE_THRESHOLD            6
++#define SQR_TOOM2_THRESHOLD              32
++#define SQR_TOOM3_THRESHOLD              98
++
++#define DIV_SB_PREINV_THRESHOLD           0  /* always */
++#define DIV_DC_THRESHOLD                 53
++#define POWM_THRESHOLD                   61
++
++#define HGCD_THRESHOLD                  116
++#define GCD_ACCEL_THRESHOLD               3
++#define GCD_DC_THRESHOLD                492
++#define JACOBI_BASE_METHOD                2
++
++#define MOD_1_NORM_THRESHOLD              0  /* always */
++#define MOD_1_UNNORM_THRESHOLD            0  /* always */
++#define USE_PREINV_DIVREM_1               1
++#define USE_PREINV_MOD_1                  1
++#define DIVREM_2_THRESHOLD                0  /* always */
++#define DIVEXACT_1_THRESHOLD              0  /* always */
++#define MODEXACT_1_ODD_THRESHOLD          0  /* always */
++
++#define GET_STR_DC_THRESHOLD             21
++#define GET_STR_PRECOMPUTE_THRESHOLD     26
++#define SET_STR_THRESHOLD              3962
++
++#define MUL_FFT_TABLE  { 368, 736, 1600, 3328, 7168, 20480, 49152, 0 }
++#define MUL_FFT_MODF_THRESHOLD          264
++#define MUL_FFT_THRESHOLD              1920
++
++#define SQR_FFT_TABLE  { 368, 736, 1856, 3328, 7168, 20480, 49152, 0 }
++#define SQR_FFT_MODF_THRESHOLD          280
++#define SQR_FFT_THRESHOLD              1920
+--- /dev/null
++++ b/mpn/mips64/r6/lshift.asm
+@@ -0,0 +1,99 @@
++dnl  MIPS64 mpn_lshift -- Left shift.
++
++dnl  Copyright 1995, 2000-2002 Free Software Foundation, Inc.
++
++dnl  This file is part of the GNU MP Library.
++dnl
++dnl  The GNU MP Library is free software; you can redistribute it and/or modify
++dnl  it under the terms of either:
++dnl
++dnl    * the GNU Lesser General Public License as published by the Free
++dnl      Software Foundation; either version 3 of the License, or (at your
++dnl      option) any later version.
++dnl
++dnl  or
++dnl
++dnl    * the GNU General Public License as published by the Free Software
++dnl      Foundation; either version 2 of the License, or (at your option) any
++dnl      later version.
++dnl
++dnl  or both in parallel, as here.
++dnl
++dnl  The GNU MP Library is distributed in the hope that it will be useful, but
++dnl  WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
++dnl  or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++dnl  for more details.
++dnl
++dnl  You should have received copies of the GNU General Public License and the
++dnl  GNU Lesser General Public License along with the GNU MP Library.  If not,
++dnl  see https://www.gnu.org/licenses/.
++
++include(`../config.m4')
++
++C INPUT PARAMETERS
++C res_ptr	$4
++C src_ptr	$5
++C size		$6
++C cnt		$7
++
++ASM_START()
++PROLOGUE(mpn_lshift)
++	dsll	$2,$6,3
++	daddu	$5,$5,$2	C make r5 point at end of src
++	ld	$10,-8($5)	C load first limb
++	dsubu	$13,$0,$7
++	daddu	$4,$4,$2	C make r4 point at end of res
++	daddiu	$6,$6,-1
++	and	$9,$6,4-1	C number of limbs in first loop
++	beq	$9,$0,.L0	C if multiple of 4 limbs, skip first loop
++	 dsrl	$2,$10,$13	C compute function result
++
++	dsubu	$6,$6,$9
++
++.Loop0:	ld	$3,-16($5)
++	daddiu	$4,$4,-8
++	daddiu	$5,$5,-8
++	daddiu	$9,$9,-1
++	dsll	$11,$10,$7
++	dsrl	$12,$3,$13
++	move	$10,$3
++	or	$8,$11,$12
++	bne	$9,$0,.Loop0
++	 sd	$8,0($4)
++
++.L0:	beq	$6,$0,.Lend
++	 nop
++
++.Loop:	ld	$3,-16($5)
++	daddiu	$4,$4,-32
++	daddiu	$6,$6,-4
++	dsll	$11,$10,$7
++	dsrl	$12,$3,$13
++
++	ld	$10,-24($5)
++	dsll	$14,$3,$7
++	or	$8,$11,$12
++	sd	$8,24($4)
++	dsrl	$9,$10,$13
++
++	ld	$3,-32($5)
++	dsll	$11,$10,$7
++	or	$8,$14,$9
++	sd	$8,16($4)
++	dsrl	$12,$3,$13
++
++	ld	$10,-40($5)
++	dsll	$14,$3,$7
++	or	$8,$11,$12
++	sd	$8,8($4)
++	dsrl	$9,$10,$13
++
++	daddiu	$5,$5,-32
++	or	$8,$14,$9
++	bgtz	$6,.Loop
++	 sd	$8,0($4)
++
++.Lend:	dsll	$8,$10,$7
++	j	$31
++	sd	$8,-8($4)
++EPILOGUE(mpn_lshift)
+--- /dev/null
++++ b/mpn/mips64/r6/mul_1.asm
+@@ -0,0 +1,95 @@
++dnl  MIPS64 mpn_mul_1 -- Multiply a limb vector with a single limb and store
++dnl  the product in a second limb vector.
++
++dnl  Copyright 1992, 1994, 1995, 2000-2002 Free Software Foundation, Inc.
++
++dnl  This file is part of the GNU MP Library.
++dnl
++dnl  The GNU MP Library is free software; you can redistribute it and/or modify
++dnl  it under the terms of either:
++dnl
++dnl    * the GNU Lesser General Public License as published by the Free
++dnl      Software Foundation; either version 3 of the License, or (at your
++dnl      option) any later version.
++dnl
++dnl  or
++dnl
++dnl    * the GNU General Public License as published by the Free Software
++dnl      Foundation; either version 2 of the License, or (at your option) any
++dnl      later version.
++dnl
++dnl  or both in parallel, as here.
++dnl
++dnl  The GNU MP Library is distributed in the hope that it will be useful, but
++dnl  WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
++dnl  or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++dnl  for more details.
++dnl
++dnl  You should have received copies of the GNU General Public License and the
++dnl  GNU Lesser General Public License along with the GNU MP Library.  If not,
++dnl  see https://www.gnu.org/licenses/.
++
++include(`../config.m4')
++
++C INPUT PARAMETERS
++C res_ptr	$4
++C s1_ptr	$5
++C size		$6
++C s2_limb	$7
++
++ASM_START()
++PROLOGUE(mpn_mul_1)
++
++C feed-in phase 0
++	ld	$8,0($5)
++
++C feed-in phase 1
++	daddiu	$5,$5,8
++	dmulu	$25,$8,$7
++	dmuhu	$24,$8,$7
++
++	daddiu	$6,$6,-1
++	beq	$6,$0,$LC0
++	 move	$2,$0		C zero cy2
++
++	daddiu	$6,$6,-1
++	beq	$6,$0,$LC1
++	ld	$8,0($5)	C load new s1 limb as early as possible
++
++Loop:	nop
++	daddu	$10,$25,$0
++	daddu	$9,$24,$0
++	daddiu	$5,$5,8
++	daddu	$10,$10,$2	C add old carry limb to low product limb
++	dmulu	$25,$8,$7
++	dmuhu	$24,$8,$7
++	ld	$8,0($5)	C load new s1 limb as early as possible
++	daddiu	$6,$6,-1	C decrement loop counter
++	sltu	$2,$10,$2	C carry from previous addition -> $2
++	nop
++	nop
++	sd	$10,0($4)
++	daddiu	$4,$4,8
++	bne	$6,$0,Loop
++	 daddu	$2,$9,$2	C add high product limb and carry from addition
++
++C wind-down phase 1
++$LC1:	daddu	$10,$25,$0
++	daddu	$9,$24,$0
++	daddu	$10,$10,$2
++	sltu	$2,$10,$2
++	dmulu	$25,$8,$7
++	dmuhu	$24,$8,$7
++	sd	$10,0($4)
++	daddiu	$4,$4,8
++	daddu	$2,$9,$2	C add high product limb and carry from addition
++
++C wind-down phase 0
++$LC0:	daddu	$10,$25,$0
++	daddu	$9,$24,$0
++	daddu	$10,$10,$2
++	sltu	$2,$10,$2
++	sd	$10,0($4)
++	j	$31
++	daddu	$2,$9,$2	C add high product limb and carry from addition
++EPILOGUE(mpn_mul_1)
+--- /dev/null
++++ b/mpn/mips64/r6/rshift.asm
+@@ -0,0 +1,96 @@
++dnl  MIPS64 mpn_rshift -- Right shift.
++
++dnl  Copyright 1995, 2000-2002 Free Software Foundation, Inc.
++
++dnl  This file is part of the GNU MP Library.
++dnl
++dnl  The GNU MP Library is free software; you can redistribute it and/or modify
++dnl  it under the terms of either:
++dnl
++dnl    * the GNU Lesser General Public License as published by the Free
++dnl      Software Foundation; either version 3 of the License, or (at your
++dnl      option) any later version.
++dnl
++dnl  or
++dnl
++dnl    * the GNU General Public License as published by the Free Software
++dnl      Foundation; either version 2 of the License, or (at your option) any
++dnl      later version.
++dnl
++dnl  or both in parallel, as here.
++dnl
++dnl  The GNU MP Library is distributed in the hope that it will be useful, but
++dnl  WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
++dnl  or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++dnl  for more details.
++dnl
++dnl  You should have received copies of the GNU General Public License and the
++dnl  GNU Lesser General Public License along with the GNU MP Library.  If not,
++dnl  see https://www.gnu.org/licenses/.
++
++include(`../config.m4')
++
++C INPUT PARAMETERS
++C res_ptr	$4
++C src_ptr	$5
++C size		$6
++C cnt		$7
++
++ASM_START()
++PROLOGUE(mpn_rshift)
++	ld	$10,0($5)	C load first limb
++	dsubu	$13,$0,$7
++	daddiu	$6,$6,-1
++	and	$9,$6,4-1	C number of limbs in first loop
++	beq	$9,$0,.L0	C if multiple of 4 limbs, skip first loop
++	 dsll	$2,$10,$13	C compute function result
++
++	dsubu	$6,$6,$9
++
++.Loop0:	ld	$3,8($5)
++	daddiu	$4,$4,8
++	daddiu	$5,$5,8
++	daddiu	$9,$9,-1
++	dsrl	$11,$10,$7
++	dsll	$12,$3,$13
++	move	$10,$3
++	or	$8,$11,$12
++	bne	$9,$0,.Loop0
++	 sd	$8,-8($4)
++
++.L0:	beq	$6,$0,.Lend
++	 nop
++
++.Loop:	ld	$3,8($5)
++	daddiu	$4,$4,32
++	daddiu	$6,$6,-4
++	dsrl	$11,$10,$7
++	dsll	$12,$3,$13
++
++	ld	$10,16($5)
++	dsrl	$14,$3,$7
++	or	$8,$11,$12
++	sd	$8,-32($4)
++	dsll	$9,$10,$13
++
++	ld	$3,24($5)
++	dsrl	$11,$10,$7
++	or	$8,$14,$9
++	sd	$8,-24($4)
++	dsll	$12,$3,$13
++
++	ld	$10,32($5)
++	dsrl	$14,$3,$7
++	or	$8,$11,$12
++	sd	$8,-16($4)
++	dsll	$9,$10,$13
++
++	daddiu	$5,$5,32
++	or	$8,$14,$9
++	bgtz	$6,.Loop
++	 sd	$8,-8($4)
++
++.Lend:	dsrl	$8,$10,$7
++	j	$31
++	sd	$8,0($4)
++EPILOGUE(mpn_rshift)
+--- /dev/null
++++ b/mpn/mips64/r6/sqr_diagonal.asm
+@@ -0,0 +1,72 @@
++dnl  MIPS64 mpn_sqr_diagonal.
++
++dnl  Copyright 2001, 2002 Free Software Foundation, Inc.
++
++dnl  This file is part of the GNU MP Library.
++dnl
++dnl  The GNU MP Library is free software; you can redistribute it and/or modify
++dnl  it under the terms of either:
++dnl
++dnl    * the GNU Lesser General Public License as published by the Free
++dnl      Software Foundation; either version 3 of the License, or (at your
++dnl      option) any later version.
++dnl
++dnl  or
++dnl
++dnl    * the GNU General Public License as published by the Free Software
++dnl      Foundation; either version 2 of the License, or (at your option) any
++dnl      later version.
++dnl
++dnl  or both in parallel, as here.
++dnl
++dnl  The GNU MP Library is distributed in the hope that it will be useful, but
++dnl  WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
++dnl  or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++dnl  for more details.
++dnl
++dnl  You should have received copies of the GNU General Public License and the
++dnl  GNU Lesser General Public License along with the GNU MP Library.  If not,
++dnl  see https://www.gnu.org/licenses/.
++
++
++dnl  INPUT PARAMETERS
++dnl  rp		$4
++dnl  up		$5
++dnl  n		$6
++
++include(`../config.m4')
++
++ASM_START()
++PROLOGUE(mpn_sqr_diagonal)
++	ld	r8,0(r5)
++	daddiu	r6,r6,-2
++	dmulu	r10,r8,r8
++	dmuhu	r9,r8,r8
++	bltz	r6,$Lend1
++	nop
++	ld	r8,8(r5)
++	beq	r6,r0,$Lend2
++	nop
++
++$Loop:	daddiu	r6,r6,-1
++	sd	r10,0(r4)
++	sd	r9,8(r4)
++	dmulu	r10,r8,r8
++	dmuhu	r9,r8,r8
++	ld	r8,16(r5)
++	daddiu	r5,r5,8
++	bne	r6,r0,$Loop
++	daddiu	r4,r4,16
++
++$Lend2: sd	r10,0(r4)
++	sd	r9,8(r4)
++	dmulu	r10,r8,r8
++	dmuhu	r9,r8,r8
++	sd	r10,16(r4)
++	j	r31
++	sd	r9,24(r4)
++
++$Lend1: sd	r10,0(r4)
++	j	r31
++	sd	r9,8(r4)
++EPILOGUE(mpn_sqr_diagonal)
+--- /dev/null
++++ b/mpn/mips64/r6/sub_n.asm
+@@ -0,0 +1,134 @@
++dnl  MIPS64 mpn_sub_n -- Subtract two limb vectors of the same length > 0 and
++dnl  store difference in a third limb vector.
++
++dnl  Copyright 1995, 2000-2002, 2011 Free Software Foundation, Inc.
++
++dnl  This file is part of the GNU MP Library.
++dnl
++dnl  The GNU MP Library is free software; you can redistribute it and/or modify
++dnl  it under the terms of either:
++dnl
++dnl    * the GNU Lesser General Public License as published by the Free
++dnl      Software Foundation; either version 3 of the License, or (at your
++dnl      option) any later version.
++dnl
++dnl  or
++dnl
++dnl    * the GNU General Public License as published by the Free Software
++dnl      Foundation; either version 2 of the License, or (at your option) any
++dnl      later version.
++dnl
++dnl  or both in parallel, as here.
++dnl
++dnl  The GNU MP Library is distributed in the hope that it will be useful, but
++dnl  WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
++dnl  or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++dnl  for more details.
++dnl
++dnl  You should have received copies of the GNU General Public License and the
++dnl  GNU Lesser General Public License along with the GNU MP Library.  If not,
++dnl  see https://www.gnu.org/licenses/.
++
++include(`../config.m4')
++
++C INPUT PARAMETERS
++C res_ptr	$4
++C s1_ptr	$5
++C s2_ptr	$6
++C size		$7
++
++ASM_START()
++PROLOGUE(mpn_sub_nc)
++	ld	$10,0($5)
++	ld	$11,0($6)
++
++	daddiu	$7,$7,-1
++	and	$9,$7,4-1	C number of limbs in first loop
++	beq	$9,$0,.L0	C if multiple of 4 limbs, skip first loop
++	 move	$2,$8
++	b	.Loop0
++	 dsubu	$7,$7,$9
++EPILOGUE()
++PROLOGUE(mpn_sub_n)
++	ld	$10,0($5)
++	ld	$11,0($6)
++
++	daddiu	$7,$7,-1
++	and	$9,$7,4-1	C number of limbs in first loop
++	beq	$9,$0,.L0	C if multiple of 4 limbs, skip first loop
++	 move	$2,$0
++
++	dsubu	$7,$7,$9
++
++.Loop0:	daddiu	$9,$9,-1
++	ld	$12,8($5)
++	daddu	$11,$11,$2
++	ld	$13,8($6)
++	sltu	$8,$11,$2
++	dsubu	$11,$10,$11
++	sltu	$2,$10,$11
++	sd	$11,0($4)
++	or	$2,$2,$8
++
++	daddiu	$5,$5,8
++	daddiu	$6,$6,8
++	move	$10,$12
++	move	$11,$13
++	bne	$9,$0,.Loop0
++	 daddiu	$4,$4,8
++
++.L0:	beq	$7,$0,.Lend
++	 nop
++
++.Loop:	daddiu	$7,$7,-4
++
++	ld	$12,8($5)
++	dsubu	$11,$10,$11
++	ld	$13,8($6)
++	sltu	$8,$10,$11
++	dsubu	$14,$11,$2
++	sltu	$2,$11,$14
++	sd	$14,0($4)
++	or	$2,$2,$8
++
++	ld	$10,16($5)
++	dsubu	$13,$12,$13
++	ld	$11,16($6)
++	sltu	$8,$12,$13
++	dsubu	$14,$13,$2
++	sltu	$2,$13,$14
++	sd	$14,8($4)
++	or	$2,$2,$8
++
++	ld	$12,24($5)
++	dsubu	$11,$10,$11
++	ld	$13,24($6)
++	sltu	$8,$10,$11
++	dsubu	$14,$11,$2
++	sltu	$2,$11,$14
++	sd	$14,16($4)
++	or	$2,$2,$8
++
++	ld	$10,32($5)
++	dsubu	$13,$12,$13
++	ld	$11,32($6)
++	sltu	$8,$12,$13
++	dsubu	$14,$13,$2
++	sltu	$2,$13,$14
++	sd	$14,24($4)
++	or	$2,$2,$8
++
++	daddiu	$5,$5,32
++	daddiu	$6,$6,32
++
++	bne	$7,$0,.Loop
++	 daddiu	$4,$4,32
++
++.Lend:	daddu	$11,$11,$2
++	sltu	$8,$11,$2
++	dsubu	$11,$10,$11
++	sltu	$2,$10,$11
++	sd	$11,0($4)
++	j	$31
++	or	$2,$2,$8
++EPILOGUE()
+--- /dev/null
++++ b/mpn/mips64/r6/submul_1.asm
+@@ -0,0 +1,103 @@
++dnl  MIPS64 mpn_submul_1 -- Multiply a limb vector with a single limb and
++dnl  subtract the product from a second limb vector.
++
++dnl  Copyright 1992, 1994, 1995, 2000-2002 Free Software Foundation, Inc.
++
++dnl  This file is part of the GNU MP Library.
++dnl
++dnl  The GNU MP Library is free software; you can redistribute it and/or modify
++dnl  it under the terms of either:
++dnl
++dnl    * the GNU Lesser General Public License as published by the Free
++dnl      Software Foundation; either version 3 of the License, or (at your
++dnl      option) any later version.
++dnl
++dnl  or
++dnl
++dnl    * the GNU General Public License as published by the Free Software
++dnl      Foundation; either version 2 of the License, or (at your option) any
++dnl      later version.
++dnl
++dnl  or both in parallel, as here.
++dnl
++dnl  The GNU MP Library is distributed in the hope that it will be useful, but
++dnl  WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
++dnl  or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++dnl  for more details.
++dnl
++dnl  You should have received copies of the GNU General Public License and the
++dnl  GNU Lesser General Public License along with the GNU MP Library.  If not,
++dnl  see https://www.gnu.org/licenses/.
++
++include(`../config.m4')
++
++C INPUT PARAMETERS
++C res_ptr	$4
++C s1_ptr	$5
++C size		$6
++C s2_limb	$7
++
++ASM_START()
++PROLOGUE(mpn_submul_1)
++
++C feed-in phase 0
++	ld	$8,0($5)
++
++C feed-in phase 1
++	daddiu	$5,$5,8
++	dmulu	$24,$8,$7
++	dmuhu	$25,$8,$7
++	daddiu	$6,$6,-1
++	beq	$6,$0,$LC0
++	 move	$2,$0		C zero cy2
++
++	daddiu	$6,$6,-1
++	beq	$6,$0,$LC1
++	ld	$8,0($5)	C load new s1 limb as early as possible
++
++Loop:	ld	$10,0($4)
++	daddu	$3,$24,$0
++	daddu	$9,$25,$0
++	daddiu	$5,$5,8
++	daddu	$3,$3,$2	C add old carry limb to low product limb
++	dmulu	$24,$8,$7
++	dmuhu	$25,$8,$7
++	ld	$8,0($5)	C load new s1 limb as early as possible
++	daddiu	$6,$6,-1	C decrement loop counter
++	sltu	$2,$3,$2	C carry from previous addition -> $2
++	dsubu	$3,$10,$3
++	sgtu	$10,$3,$10
++	daddu	$2,$2,$10
++	sd	$3,0($4)
++	daddiu	$4,$4,8
++	bne	$6,$0,Loop
++	 daddu	$2,$9,$2	C add high product limb and carry from addition
++
++C wind-down phase 1
++$LC1:	ld	$10,0($4)
++	daddu	$3,$24,$0
++	daddu	$9,$25,$0
++	daddu	$3,$3,$2
++	sltu	$2,$3,$2
++	dmulu	$24,$8,$7
++	dmuhu	$25,$8,$7
++	dsubu	$3,$10,$3
++	sgtu	$10,$3,$10
++	daddu	$2,$2,$10
++	sd	$3,0($4)
++	daddiu	$4,$4,8
++	daddu	$2,$9,$2	C add high product limb and carry from addition
++
++C wind-down phase 0
++$LC0:	ld	$10,0($4)
++	daddu	$3,$24,$0
++	daddu	$9,$25,$0
++	daddu	$3,$3,$2
++	sltu	$2,$3,$2
++	dsubu	$3,$10,$3
++	sgtu	$10,$3,$10
++	daddu	$2,$2,$10
++	sd	$3,0($4)
++	j	$31
++	daddu	$2,$9,$2	C add high product limb and carry from addition
++EPILOGUE(mpn_submul_1)
+--- /dev/null
++++ b/mpn/mips64/r6/umul.asm
+@@ -0,0 +1,44 @@
++dnl  MIPS64 umul_ppmm -- longlong.h support.
++
++dnl  Copyright 2002 Free Software Foundation, Inc.
++
++dnl  This file is part of the GNU MP Library.
++dnl
++dnl  The GNU MP Library is free software; you can redistribute it and/or modify
++dnl  it under the terms of either:
++dnl
++dnl    * the GNU Lesser General Public License as published by the Free
++dnl      Software Foundation; either version 3 of the License, or (at your
++dnl      option) any later version.
++dnl
++dnl  or
++dnl
++dnl    * the GNU General Public License as published by the Free Software
++dnl      Foundation; either version 2 of the License, or (at your option) any
++dnl      later version.
++dnl
++dnl  or both in parallel, as here.
++dnl
++dnl  The GNU MP Library is distributed in the hope that it will be useful, but
++dnl  WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
++dnl  or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++dnl  for more details.
++dnl
++dnl  You should have received copies of the GNU General Public License and the
++dnl  GNU Lesser General Public License along with the GNU MP Library.  If not,
++dnl  see https://www.gnu.org/licenses/.
++
++include(`../config.m4')
++
++C INPUT PARAMETERS
++C plp   $4
++C u     $5
++C v     $6
++
++ASM_START()
++PROLOGUE(mpn_umul_ppmm)
++	dmulu	$3,$5,$6
++	dmuhu	$2,$5,$6
++	j	$31
++	sd	$3,0($4)
++EPILOGUE(mpn_umul_ppmm)

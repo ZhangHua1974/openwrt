@@ -1,0 +1,38 @@
+--- a/include/mbedtls/bn_mul.h
++++ b/include/mbedtls/bn_mul.h
+@@ -731,6 +731,8 @@
+         "lw     $12, %5         \n\t"   \
+         "lw     $13, %6         \n\t"
+ 
++#if !(defined (__mips_isa_rev) && (__mips_isa_rev >= 6))
++
+ #define MULADDC_CORE                    \
+         "lw     $14, 0($10)     \n\t"   \
+         "multu  $13, $14        \n\t"   \
+@@ -746,6 +748,26 @@
+         "sw     $15, 0($11)     \n\t"   \
+         "addu   $12, $12, $14   \n\t"   \
+         "addi   $11, $11, 4     \n\t"
++#else
++
++#define MULADDC_CORE                    \
++		"lw     $14, 0($10)    \n\t"  	\
++		"mulu   $24, $13, $14  \n\t"    \
++		"muhu   $25, $13, $14  \n\t"    \
++		"addiu  $10, $10, 4    \n\t"    \
++		"add    $14, $24, $0   \n\t"    \
++		"add    $9,  $25, $0   \n\t"    \
++		"addu   $14, $12, $14  \n\t"    \
++		"lw     $15, 0($11)    \n\t"    \
++		"sltu   $12, $14, $12  \n\t"    \
++		"addu   $15, $14, $15  \n\t"    \
++		"sltu   $14, $15, $14  \n\t"    \
++		"addu   $12, $12, $9   \n\t"    \
++		"sw     $15, 0($11)    \n\t"    \
++		"addu   $12, $12, $14  \n\t"    \
++		"addiu  $11, $11, 4    \n\t"
++
++#endif
+ 
+ #define MULADDC_STOP                    \
+         "sw     $12, %0         \n\t"   \

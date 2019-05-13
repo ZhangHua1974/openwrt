@@ -1,5 +1,4 @@
-src-git packages https://github.com/ZhangHua1974/packages.git
-src-git luci https://github.com/ZhangHua1974/luci.git
-src-git routing https://github.com/ZhangHua1974/packages-1.git
-src-git telephony https://github.com/ZhangHua1974/packages.git
-
+src-git packages https://github.com/mips-r6/packages.git
+src-git luci https://github.com/mips-r6/luci.git
+src-git routing https://github.com/mips-r6/routing.git
+src-git telephony https://github.com/mips-r6/telephony.git
